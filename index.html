@@ -1,0 +1,2256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0c0c0e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Music annotation tool — rhythm pattern matcher and key finder with audio playback">
+  <title>RHYTHM & KEY</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ══════════════════════════════════════════
+       DARK THEME (default)
+    ══════════════════════════════════════════ */
+    :root {
+      --bg: #0c0c0e;
+      --surface: #141416;
+      --surface-2: #1c1c1f;
+      --surface-3: #242428;
+      --border: #2e2e34;
+      --border-2: #3d3d45;
+      --kick: #f97316;
+      --kick-dim: #7c3a0e;
+      --kick-glow: rgba(249,115,22,0.35);
+      --snare: #06b6d4;
+      --snare-dim: #0a4a5a;
+      --snare-glow: rgba(6,182,212,0.35);
+      --text: #e2e8f0;
+      --text-2: #94a3b8;
+      --text-3: #475569;
+      --match: #a3e635;
+      --match-dim: rgba(163,230,53,0.12);
+      --red: #ef4444;
+      --purple: #a855f7;
+      --radius: 5px;
+      --playhead-bar: white;
+      --white-key-bg: #dddde4;
+      --white-key-border: #888;
+      --white-key-label: #444;
+      --black-key-bg: #1a1a1e;
+      --black-key-border: #000;
+      --black-key-label: #666;
+      --shadow-card: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    /* ══════════════════════════════════════════
+       LIGHT THEME — ADHD-friendly sage + teal
+    ══════════════════════════════════════════ */
+    [data-theme="light"] {
+      --bg: #eaf2ea;           /* pale sage — easy on the eye, non-clinical */
+      --surface: #f6fbf5;      /* near-white with green warmth */
+      --surface-2: #ecf5eb;    /* soft mint for hover/expanded */
+      --surface-3: #deeedd;    /* deeper mint for depth */
+      --border: #bed8bb;       /* calm sage border */
+      --border-2: #9dc09a;     /* medium sage */
+      --kick: #b85c08;         /* warm amber — grounded, not harsh */
+      --kick-dim: #fde8d4;     /* very pale amber fill */
+      --kick-glow: rgba(184,92,8,0.18);
+      --snare: #0d7a96;        /* soft teal — calming blue-green */
+      --snare-dim: #d4eff6;    /* very pale teal fill */
+      --snare-glow: rgba(13,122,150,0.18);
+      --text: #1b3020;         /* deep forest — readable without harshness */
+      --text-2: #3d5e42;       /* medium forest */
+      --text-3: #7a9a7e;       /* muted sage — soft secondary text */
+      --match: #1e6e44;        /* forest green */
+      --match-dim: rgba(30,110,68,0.10);
+      --red: #b83232;
+      --purple: #5e4ea0;
+      --radius: 8px;           /* softer corners feel calmer */
+      --playhead-bar: #1b3020;
+      --white-key-bg: #f8fdf8;
+      --white-key-border: #bed8bb;
+      --white-key-label: #3d5e42;
+      --black-key-bg: #2a3e2c;
+      --black-key-border: #1b3020;
+      --black-key-label: #9dc09a;
+      --shadow-card: 0 2px 10px rgba(0,60,20,0.08);
+    }
+
+    /* ══════════════════════════════════════════
+       BASE
+    ══════════════════════════════════════════ */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%; background: var(--bg); color: var(--text);
+      font-family: 'IBM Plex Sans', sans-serif; overflow-x: hidden;
+      transition: background 0.25s, color 0.25s;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; height: 56px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      transition: background 0.25s, border-color 0.25s;
+    }
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 23px; letter-spacing: 3px; color: var(--text);
+    }
+    .logo span { color: var(--kick); }
+    .header-right { display: flex; align-items: center; gap: 8px; }
+    .tabs {
+      display: flex; gap: 2px;
+      background: var(--bg); padding: 4px; border-radius: var(--radius);
+      transition: background 0.25s;
+    }
+    .tab-btn {
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase;
+      padding: 6px 16px; border: none; cursor: pointer;
+      background: transparent; color: var(--text-3);
+      border-radius: calc(var(--radius) - 2px); transition: all 0.15s;
+    }
+    .tab-btn.active { background: var(--surface-3); color: var(--text); }
+    .tab-btn:hover:not(.active) { color: var(--text-2); }
+
+    /* Theme toggle */
+    .theme-btn {
+      font-size: 16px; line-height: 1; cursor: pointer;
+      border: 1px solid var(--border); background: var(--surface-2);
+      padding: 6px 9px; border-radius: var(--radius);
+      transition: all 0.15s; color: var(--text-2);
+    }
+    .theme-btn:hover { border-color: var(--border-2); background: var(--surface-3); }
+
+    .pwa-install {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+      color: var(--text-3); cursor: pointer; border: 1px solid var(--border);
+      background: none; padding: 5px 10px; border-radius: var(--radius);
+      letter-spacing: 1px; display: none; transition: all 0.15s;
+    }
+    .pwa-install:hover { color: var(--text-2); border-color: var(--border-2); }
+    .pwa-install.visible { display: block; }
+
+    /* ── MAIN LAYOUT ── */
+    main { max-width: 960px; margin: 0 auto; padding: 24px 20px; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── SECTION HEADERS ── */
+    .section-label {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+      letter-spacing: 3px; color: var(--text-3); text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    /* ── SEQUENCER ── */
+    .sequencer-container {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+      box-shadow: var(--shadow-card);
+      transition: background 0.25s, border-color 0.25s;
+    }
+    .beat-header {
+      display: grid; grid-template-columns: 60px 1fr;
+      margin-bottom: 6px;
+    }
+    .beat-labels {
+      display: grid; grid-template-columns: repeat(16, 1fr);
+      gap: 3px;
+    }
+    .beat-label {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      color: var(--text-3); text-align: center; letter-spacing: 0;
+      padding: 2px 0;
+    }
+    .beat-label.beat-start { color: var(--text-2); font-weight: 600; }
+    .step-row {
+      display: grid; grid-template-columns: 60px 1fr;
+      align-items: center; gap: 0; margin-bottom: 10px;
+    }
+    .row-label {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+      font-weight: 600; letter-spacing: 2px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .row-label.kick-label { color: var(--kick); }
+    .row-label.snare-label { color: var(--snare); }
+    .steps-grid {
+      display: grid; grid-template-columns: repeat(16, 1fr);
+      gap: 3px;
+    }
+    .step-btn {
+      height: 40px; border: 1px solid var(--border);
+      background: var(--surface-2); cursor: pointer;
+      border-radius: calc(var(--radius) - 1px); transition: all 0.08s;
+      position: relative; overflow: hidden;
+    }
+    .step-btn:hover { border-color: var(--border-2); background: var(--surface-3); }
+    .step-btn.beat-1 { border-left: 2px solid var(--border-2); }
+    .step-btn.playing { background: var(--surface-3) !important; border-color: var(--border-2) !important; }
+
+    /* Kick active */
+    .kick-row .step-btn.active {
+      background: var(--kick-dim); border-color: var(--kick);
+      box-shadow: 0 0 8px var(--kick-glow), inset 0 0 4px var(--kick-glow);
+    }
+    .kick-row .step-btn.active::after {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--kick); box-shadow: 0 0 6px var(--kick);
+    }
+    /* Snare active */
+    .snare-row .step-btn.active {
+      background: var(--snare-dim); border-color: var(--snare);
+      box-shadow: 0 0 8px var(--snare-glow), inset 0 0 4px var(--snare-glow);
+    }
+    .snare-row .step-btn.active::after {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--snare); box-shadow: 0 0 6px var(--snare);
+    }
+    /* Playhead */
+    .step-btn.playhead {
+      border-top: 2px solid var(--playhead-bar) !important;
+      opacity: 0.9;
+    }
+    .kick-row .step-btn.active.playhead { box-shadow: 0 0 14px var(--kick-glow), inset 0 0 8px var(--kick-glow); }
+    .snare-row .step-btn.active.playhead { box-shadow: 0 0 14px var(--snare-glow), inset 0 0 8px var(--snare-glow); }
+    .beat-divider { opacity: 0.3; }
+
+    /* ── TRANSPORT CONTROLS ── */
+    .transport {
+      display: flex; align-items: center; flex-wrap: wrap;
+      gap: 12px; margin-bottom: 20px;
+    }
+    .play-btn {
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;
+      letter-spacing: 2px; padding: 10px 20px; cursor: pointer;
+      border: 1px solid var(--kick); background: transparent; color: var(--kick);
+      border-radius: var(--radius); transition: all 0.1s; min-width: 94px;
+    }
+    .play-btn:hover, .play-btn.playing { background: var(--kick); color: var(--bg); }
+    .clear-btn {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+      letter-spacing: 2px; padding: 10px 16px; cursor: pointer;
+      border: 1px solid var(--border-2); background: transparent; color: var(--text-3);
+      border-radius: var(--radius); transition: all 0.1s;
+    }
+    .clear-btn:hover { color: var(--text); border-color: var(--text-2); }
+    .bpm-control {
+      display: flex; align-items: center; gap: 10px; flex: 1; max-width: 280px;
+    }
+    .bpm-label {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+      font-weight: 600; letter-spacing: 2px; color: var(--text-2);
+      white-space: nowrap;
+    }
+    input[type=range] {
+      -webkit-appearance: none; flex: 1; height: 4px;
+      background: var(--surface-3); border-radius: 2px; outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px;
+      border-radius: 50%; background: var(--snare);
+      cursor: pointer; border: 2px solid var(--bg);
+      box-shadow: 0 0 5px var(--snare-glow);
+      transition: transform 0.1s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    .bpm-val {
+      font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600;
+      color: var(--text); min-width: 40px; text-align: right;
+    }
+    .match-btn {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+      letter-spacing: 2px; padding: 10px 18px; cursor: pointer;
+      border: 1px solid var(--match); background: transparent; color: var(--match);
+      border-radius: var(--radius); transition: all 0.1s; margin-left: auto;
+    }
+    .match-btn:hover { background: var(--match); color: var(--bg); }
+
+    /* ── MATCH RESULTS ── */
+    .results-header {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    }
+    .results-count {
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+      color: var(--text-3);
+    }
+    .score-bar-outer { flex: 1; height: 2px; background: var(--surface-3); }
+    .result-cards {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 12px;
+    }
+    .result-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px; cursor: pointer;
+      transition: all 0.15s; position: relative; overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+    .result-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+      border-radius: var(--radius) 0 0 var(--radius);
+    }
+    .result-card.score-100::before { background: var(--match); }
+    .result-card.score-high::before { background: var(--kick); }
+    .result-card.score-mid::before { background: var(--snare); }
+    .result-card:hover { border-color: var(--border-2); background: var(--surface-2); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
+    .result-card.expanded { border-color: var(--border-2); background: var(--surface-2); }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+    .card-name {
+      font-family: 'Bebas Neue', sans-serif; font-size: 21px; letter-spacing: 1px; line-height: 1;
+    }
+    .card-score {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+      padding: 3px 8px; border-radius: var(--radius);
+      background: var(--match-dim); color: var(--match);
+    }
+    .card-subtitle {
+      font-size: 12px; color: var(--text-3); margin-bottom: 10px; font-style: italic;
+    }
+    .card-genres { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+    .genre-tag {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 500;
+      letter-spacing: 1px; padding: 3px 8px;
+      border-radius: var(--radius); background: var(--surface-3);
+      color: var(--text-2); border: 1px solid var(--border);
+    }
+    .card-bpm {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-3);
+    }
+    .card-detail { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; display: none; }
+    .result-card.expanded .card-detail { display: block; }
+    .detail-section { margin-bottom: 14px; }
+    .detail-label {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600;
+      letter-spacing: 2px; color: var(--text-3); text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .detail-text { font-size: 13px; color: var(--text-2); line-height: 1.7; }
+    .instrument-list { display: flex; flex-wrap: wrap; gap: 5px; }
+    .instrument-tag {
+      font-size: 12px; color: var(--text); background: var(--surface-3);
+      padding: 3px 9px; border-radius: var(--radius); border: 1px solid var(--border);
+    }
+    .origin-list { display: flex; flex-wrap: wrap; gap: 5px; }
+    .origin-tag {
+      font-size: 12px; color: var(--purple); background: rgba(90,80,180,0.08);
+      padding: 3px 9px; border-radius: var(--radius); border: 1px solid rgba(90,80,180,0.2);
+    }
+    .pattern-preview {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+      background: var(--bg); padding: 9px 11px; border-radius: var(--radius);
+      color: var(--text-2); margin-top: 8px; border: 1px solid var(--border);
+      transition: background 0.25s;
+    }
+    .pattern-preview span { color: var(--text-3); }
+    .pattern-preview .hit-k { color: var(--kick); font-weight: 600; }
+    .pattern-preview .hit-s { color: var(--snare); font-weight: 600; }
+    .no-results {
+      font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+      color: var(--text-3); text-align: center; padding: 40px;
+      border: 1px dashed var(--border); border-radius: var(--radius);
+      line-height: 1.8;
+    }
+
+    /* ── CARD PREVIEW PLAYER ── */
+    .card-preview {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 10px; padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .preview-btn {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+      letter-spacing: 1px; padding: 5px 12px; cursor: pointer;
+      border: 1px solid var(--border-2); background: transparent; color: var(--text-2);
+      border-radius: var(--radius); transition: all 0.12s; white-space: nowrap;
+      flex-shrink: 0; user-select: none;
+    }
+    .preview-btn:hover { border-color: var(--kick); color: var(--kick); }
+    .preview-btn.previewing {
+      border-color: var(--kick); color: var(--kick);
+      background: var(--kick-dim);
+      animation: preview-pulse 1s ease-in-out infinite;
+    }
+    @keyframes preview-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 var(--kick-glow); }
+      50% { box-shadow: 0 0 0 4px var(--kick-glow); }
+    }
+    .preview-steps { display: flex; gap: 2px; flex: 1; align-items: center; }
+    .preview-step {
+      flex: 1; height: 6px; border-radius: 2px;
+      background: var(--surface-3); border: 1px solid var(--border);
+      transition: background 0.05s; min-width: 0;
+    }
+    .preview-step.has-k { background: var(--kick-dim); border-color: var(--kick); }
+    .preview-step.has-s { background: var(--snare-dim); border-color: var(--snare); }
+    .preview-step.has-both { background: var(--kick-dim); border-color: var(--kick); }
+    .preview-step.beat-1 { border-left: 2px solid var(--border-2); }
+    .preview-step.active-head { background: var(--playhead-bar) !important; border-color: var(--border-2) !important; }
+    .preview-step.has-k.active-head { background: var(--kick) !important; border-color: var(--kick) !important; box-shadow: 0 0 6px var(--kick-glow); }
+    .preview-step.has-s.active-head { background: var(--snare) !important; border-color: var(--snare) !important; box-shadow: 0 0 6px var(--snare-glow); }
+    .preview-step.has-both.active-head { background: var(--kick) !important; border-color: var(--kick) !important; box-shadow: 0 0 6px var(--kick-glow); }
+
+    /* ── PIANO / KEY TAB ── */
+    .keyboard-wrap {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px 20px 20px;
+      margin-bottom: 16px; overflow-x: auto;
+      box-shadow: var(--shadow-card);
+      transition: background 0.25s, border-color 0.25s;
+    }
+    .piano {
+      position: relative; display: flex; user-select: none;
+      height: 130px; min-width: 520px; width: 100%;
+    }
+    .white-key {
+      flex: 1; background: var(--white-key-bg);
+      border: 1px solid var(--white-key-border);
+      border-top: none; border-radius: 0 0 5px 5px;
+      cursor: pointer; transition: background 0.08s;
+      position: relative; min-width: 28px;
+    }
+    .white-key:hover { background: var(--surface-3); }
+    .white-key.active {
+      background: var(--kick-dim) !important;
+      border-color: var(--kick) !important;
+      box-shadow: inset 0 -4px 8px var(--kick-glow);
+    }
+    .white-key .key-name {
+      position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600;
+      color: var(--white-key-label); pointer-events: none; white-space: nowrap;
+    }
+    .black-key {
+      position: absolute; top: 0; height: 63%;
+      background: var(--black-key-bg);
+      border: 1px solid var(--black-key-border);
+      border-radius: 0 0 4px 4px; cursor: pointer; z-index: 2;
+      transition: background 0.08s;
+      box-shadow: 2px 5px 8px rgba(0,0,0,0.4);
+    }
+    .black-key:hover { filter: brightness(1.3); }
+    .black-key.active {
+      background: var(--snare-dim) !important;
+      border-color: var(--snare) !important;
+      box-shadow: 0 0 10px var(--snare-glow);
+    }
+    .black-key-name {
+      position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+      font-family: 'IBM Plex Mono', monospace; font-size: 8px; font-weight: 600;
+      color: var(--black-key-label); pointer-events: none; white-space: nowrap;
+    }
+
+    /* Key detection controls */
+    .key-controls {
+      display: flex; align-items: center; gap: 12px;
+      flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .selected-notes-display {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1;
+    }
+    .selected-note-chip {
+      font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600;
+      padding: 5px 12px; background: var(--kick-dim);
+      border: 1px solid var(--kick); border-radius: var(--radius);
+      color: var(--kick); cursor: pointer; transition: all 0.1s;
+    }
+    .selected-note-chip:hover { opacity: 0.75; }
+    .no-notes-hint {
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+      color: var(--text-3); font-style: italic;
+    }
+    .clear-notes-btn {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+      letter-spacing: 2px; padding: 8px 14px; cursor: pointer;
+      border: 1px solid var(--border-2); background: transparent; color: var(--text-3);
+      border-radius: var(--radius); transition: all 0.1s; white-space: nowrap;
+    }
+    .clear-notes-btn:hover { color: var(--text); border-color: var(--text-2); }
+
+    /* Key match results */
+    .key-matches { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .key-match-btn {
+      display: grid; grid-template-columns: 190px 1fr auto;
+      align-items: center; gap: 14px;
+      padding: 13px 18px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); cursor: pointer; transition: all 0.15s; text-align: left;
+      box-shadow: var(--shadow-card);
+    }
+    .key-match-btn:hover { border-color: var(--border-2); background: var(--surface-2); transform: translateX(2px); }
+    .key-match-btn.selected { border-color: var(--kick); background: var(--kick-dim); }
+    .key-match-name {
+      font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1px;
+    }
+    .key-match-name.major { color: var(--kick); }
+    .key-match-name.minor { color: var(--snare); }
+    .key-match-notes {
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+      color: var(--text-2); display: flex; gap: 5px; flex-wrap: wrap;
+    }
+    .key-match-notes .in-key { color: var(--text); }
+    .key-match-notes .selected { color: var(--match); font-weight: 600; }
+    .key-match-score-wrap { display: flex; align-items: center; gap: 8px; }
+    .key-match-score {
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;
+      color: var(--match); min-width: 38px; text-align: right;
+    }
+    .score-dots { display: flex; gap: 3px; }
+    .score-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--surface-3); border: 1px solid var(--border-2);
+    }
+    .score-dot.lit { background: var(--match); border-color: var(--match); }
+
+    /* Key info panel */
+    .key-info-panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 22px;
+      box-shadow: var(--shadow-card);
+      transition: background 0.25s, border-color 0.25s;
+    }
+    .key-info-header {
+      display: flex; align-items: baseline; gap: 14px; margin-bottom: 22px;
+    }
+    .key-info-name {
+      font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 2px;
+    }
+    .key-info-relative {
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text-3);
+    }
+    .key-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 22px;
+    }
+    @media (max-width: 600px) { .key-grid { grid-template-columns: 1fr; } }
+    .key-subsection { }
+    .chords-row { display: flex; gap: 7px; flex-wrap: wrap; }
+    .chord-card {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 9px 11px; min-width: 54px; text-align: center;
+    }
+    .chord-card.tonic { border-color: var(--kick); background: var(--kick-dim); }
+    .chord-card.dominant { border-color: var(--snare); background: var(--snare-dim); }
+    .chord-card.subdominant { border-color: var(--purple); background: rgba(90,80,180,0.08); }
+    .chord-numeral {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      color: var(--text-3); margin-bottom: 4px;
+    }
+    .chord-name {
+      font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600;
+      color: var(--text);
+    }
+    .chord-card.tonic .chord-name { color: var(--kick); }
+    .chord-card.dominant .chord-name { color: var(--snare); }
+    .cadences-list { display: flex; flex-direction: column; gap: 7px; }
+    .cadence-item {
+      display: flex; align-items: baseline; gap: 12px;
+      padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .cadence-chords {
+      font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600;
+      color: var(--text); min-width: 130px; white-space: nowrap;
+    }
+    .cadence-desc { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+    .progressions-list { display: flex; flex-direction: column; gap: 7px; }
+    .prog-item {
+      padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    .prog-chords {
+      font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600;
+      color: var(--match); margin-bottom: 4px;
+    }
+    .prog-name { font-size: 12px; color: var(--text-2); font-weight: 500; }
+    .prog-desc { font-size: 12px; color: var(--text-3); margin-top: 3px; line-height: 1.5; }
+
+    /* ── EMPTY STATES ── */
+    .empty-state {
+      text-align: center; padding: 48px 20px;
+      border: 1px dashed var(--border); border-radius: var(--radius);
+    }
+    .empty-state-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.5; }
+    .empty-state p {
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+      color: var(--text-3); line-height: 1.9;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+
+    /* ── KEY TOOLBAR ── */
+    .key-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 10px; margin-bottom: 12px;
+    }
+    .key-toolbar-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .key-toolbar-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .lock-btn {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+      letter-spacing: 1px; padding: 7px 13px; cursor: pointer;
+      border: 1px solid var(--border-2); background: transparent; color: var(--text-2);
+      border-radius: var(--radius); transition: all 0.15s; white-space: nowrap;
+    }
+    .lock-btn:hover { border-color: var(--snare); color: var(--snare); }
+    .lock-btn.locked { border-color: var(--snare); color: var(--snare); background: var(--snare-dim); }
+    .octave-control { display: flex; align-items: center; gap: 3px; }
+    .octave-btn {
+      font-size: 13px; font-weight: 700; padding: 5px 10px; cursor: pointer;
+      border: 1px solid var(--border-2); background: transparent; color: var(--text-2);
+      border-radius: var(--radius); transition: all 0.1s; line-height: 1; font-family: monospace;
+    }
+    .octave-btn:hover:not(:disabled) { border-color: var(--text-2); color: var(--text); }
+    .octave-btn:disabled { opacity: 0.3; cursor: default; }
+    .octave-display {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+      color: var(--text-2); padding: 0 8px; white-space: nowrap; min-width: 72px; text-align: center;
+    }
+    .sound-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+    .sound-pill {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600;
+      letter-spacing: 0.5px; padding: 5px 10px; cursor: pointer;
+      border: 1px solid var(--border-2); background: transparent; color: var(--text-3);
+      border-radius: var(--radius); transition: all 0.12s; white-space: nowrap;
+    }
+    .sound-pill:hover { border-color: var(--text-2); color: var(--text-2); }
+    .sound-pill.active { border-color: var(--kick); color: var(--kick); background: var(--kick-dim); }
+    .kbd-hint-bar {
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px; line-height: 1.6;
+      color: var(--text-3); padding: 7px 12px; margin-bottom: 12px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .kbd-hint-bar b { color: var(--text-2); }
+    /* Piano key flash (locked mode) */
+    @keyframes key-flash {
+      0% { opacity: 1; } 40% { opacity: 0.55; } 100% { opacity: 1; }
+    }
+    .white-key.flash { background: rgba(249,115,22,0.45) !important; animation: key-flash 0.28s ease-out; }
+    .black-key.flash { background: rgba(6,182,212,0.55) !important; animation: key-flash 0.28s ease-out; }
+    /* Keyboard shortcut label on piano keys */
+    .key-kblabel {
+      position: absolute; top: 5px; left: 50%; transform: translateX(-50%);
+      font-family: 'IBM Plex Mono', monospace; font-size: 7px; font-weight: 700;
+      color: var(--text-3); pointer-events: none; opacity: 0.7;
+    }
+    .black-key .key-kblabel { color: #888; top: 4px; }
+
+    /* ── SCALE PLAYER ── */
+    .scale-player { margin-bottom: 22px; }
+    .scale-player-header {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .play-scale-btn {
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+      letter-spacing: 1px; padding: 5px 14px; cursor: pointer;
+      border: 1px solid var(--match); background: transparent; color: var(--match);
+      border-radius: var(--radius); transition: all 0.12s;
+    }
+    .play-scale-btn:hover, .play-scale-btn.sp-playing { background: var(--match); color: var(--bg); }
+    .scale-notes-row { display: flex; gap: 5px; flex-wrap: wrap; }
+    .scale-note-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 8px 10px; min-width: 44px; background: var(--surface-2);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      cursor: pointer; transition: all 0.12s; font-family: 'IBM Plex Mono', monospace;
+    }
+    .scale-note-btn:hover { border-color: var(--border-2); background: var(--surface-3); transform: translateY(-1px); }
+    .scale-note-btn.in-selection { border-color: var(--kick); background: var(--kick-dim); }
+    .scale-note-btn.sp-active { border-color: var(--snare) !important; background: var(--snare-dim) !important; box-shadow: 0 0 8px var(--snare-glow); transform: translateY(-2px); }
+    .scale-degree { font-size: 9px; color: var(--text-3); font-weight: 600; letter-spacing: 1px; }
+    .scale-note-name { font-size: 15px; color: var(--text); font-weight: 700; }
+    .scale-note-btn.in-selection .scale-note-name { color: var(--kick); }
+    .scale-note-btn.sp-active .scale-note-name { color: var(--snare); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      header { padding: 0 12px; height: 52px; }
+      main { padding: 16px 12px; }
+      .step-btn { height: 34px; }
+      .tabs .tab-btn { padding: 5px 10px; font-size: 11px; }
+      .logo { font-size: 19px; }
+      .key-match-btn { grid-template-columns: 1fr auto; }
+      .key-match-notes { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">RHYTHM <span>&</span> KEY</div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="rhythm">RHYTHM</button>
+    <button class="tab-btn" data-tab="key">KEY</button>
+  </div>
+  <div class="header-right">
+    <button class="theme-btn" id="themeBtn" title="Toggle light / dark mode">🌙</button>
+    <button class="pwa-install" id="installBtn">+ INSTALL</button>
+  </div>
+</header>
+
+<main>
+  <!-- ══════════════ RHYTHM TAB ══════════════ -->
+  <section class="tab-content active" id="tab-rhythm">
+    <div class="sequencer-container">
+      <div class="beat-header">
+        <div></div>
+        <div class="beat-labels" id="beatLabels"></div>
+      </div>
+      <div class="step-row kick-row" id="kickRow">
+        <div class="row-label kick-label">KICK</div>
+        <div class="steps-grid" id="kickGrid"></div>
+      </div>
+      <div class="step-row snare-row" id="snareRow">
+        <div class="row-label snare-label">SNARE</div>
+        <div class="steps-grid" id="snareGrid"></div>
+      </div>
+    </div>
+
+    <div class="transport">
+      <button class="play-btn" id="playBtn">▶ PLAY</button>
+      <button class="clear-btn" id="clearBtn">CLEAR</button>
+      <div class="bpm-control">
+        <span class="bpm-label">BPM</span>
+        <input type="range" id="bpmSlider" min="60" max="220" value="120">
+        <span class="bpm-val" id="bpmDisplay">120</span>
+      </div>
+      <button class="match-btn" id="matchBtn">▶ MATCH PATTERNS</button>
+    </div>
+
+    <div id="rhythmResults">
+      <div class="empty-state">
+        <div class="empty-state-icon">🥁</div>
+        <p>Set kick and snare steps, then hit MATCH PATTERNS<br>to find matching genres from the database.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ KEY TAB ══════════════ -->
+  <section class="tab-content" id="tab-key">
+
+    <!-- Toolbar row -->
+    <div class="key-toolbar">
+      <div class="key-toolbar-left">
+        <!-- Lock toggle -->
+        <button class="lock-btn" id="lockBtn" title="Lock logged notes — playing won't change them">🔓 UNLOCK</button>
+        <!-- Octave control -->
+        <div class="octave-control">
+          <button class="octave-btn" id="octDownBtn" title="Octave down (Z)">−</button>
+          <span class="octave-display" id="octaveDisplay">OCT 4</span>
+          <button class="octave-btn" id="octUpBtn" title="Octave up (X)">+</button>
+        </div>
+      </div>
+      <div class="key-toolbar-right">
+        <!-- Sound selector -->
+        <div class="sound-pills" id="soundPills">
+          <button class="sound-pill active" data-sound="piano">Piano</button>
+          <button class="sound-pill" data-sound="organ">Organ</button>
+          <button class="sound-pill" data-sound="marimba">Marimba</button>
+          <button class="sound-pill" data-sound="pad">Pad</button>
+          <button class="sound-pill" data-sound="bass">Bass</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Keyboard hint bar -->
+    <div class="kbd-hint-bar" id="kbdHintBar">
+      <b>QWERTY keyboard:</b>&nbsp;
+      A S D F G H J K &nbsp;=&nbsp; C D E F G A B C  &nbsp;|&nbsp;
+      W E &nbsp;T Y U &nbsp;=&nbsp; C# D# &nbsp;F# G# A#  &nbsp;|&nbsp;
+      <b>Z</b> octave − &nbsp; <b>X</b> octave +  &nbsp;|&nbsp;
+      <b>L</b> toggle lock
+    </div>
+
+    <!-- Piano -->
+    <div class="keyboard-wrap">
+      <div class="piano" id="piano"></div>
+    </div>
+
+    <!-- Note chips + clear -->
+    <div class="key-controls">
+      <div class="selected-notes-display" id="selectedNotesDisplay">
+        <span class="no-notes-hint">No notes logged — click keys or type on keyboard</span>
+      </div>
+      <button class="clear-notes-btn" id="clearNotesBtn">CLEAR</button>
+    </div>
+
+    <!-- Detected keys + info panel -->
+    <div id="keyResults">
+      <div class="empty-state">
+        <div class="empty-state-icon">🎹</div>
+        <p>Play some notes to find matching keys.<br>Lock first if you want to play freely without logging.</p>
+      </div>
+    </div>
+    <div id="keyInfoPanel"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════
+// RHYTHM DATABASE  (from uploaded pattern research docs)
+// ═══════════════════════════════════════════════════════
+
+const RHYTHMS = [
+  {
+    id: 'tresillo',
+    name: 'Tresillo',
+    subtitle: '3-3-2 rhythmic cell',
+    kick: [1,0,0,0, 0,0,1,0, 0,0,0,0, 1,0,0,0],
+    snare:[0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+    bpmRange: [70, 160], bpmTypical: [90, 120],
+    genres: ['Afro-Cuban', 'Salsa', 'Mambo', 'Son Cubano', 'Latin Pop'],
+    origin: ['Cuba', 'Sub-Saharan African diaspora', 'Caribbean'],
+    instruments: ['Clave', 'Congas', 'Bongos', 'Timbales', 'Bass (tumbao)'],
+    conventions: 'The 3-3-2 grouping is one of the most fundamental rhythmic cells in Afro-diasporic music. It commonly drives bass ostinatos and clave patterns rather than kick drum, but serves as a skeleton for many Latin rhythm arrangements. Extended vamp sections and groove-based forms dominate.',
+  },
+  {
+    id: 'reggaeton',
+    name: 'Reggaeton',
+    subtitle: 'Dembow-style shell',
+    kick: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+    snare:[0,0,0,1, 0,0,1,0, 0,0,0,1, 0,0,1,0],
+    bpmRange: [80, 100], bpmTypical: [85, 95],
+    genres: ['Reggaeton', 'Dembow', 'Urbano', 'Latin Urban', 'Perreo'],
+    origin: ['Panama', 'Puerto Rico', 'Jamaica (dembow riddim lineage)'],
+    instruments: ['Drum machine / 808', 'Synth bass', 'Perc samples', 'Vocal chops'],
+    conventions: 'Dembow originated from Jamaican dancehall and was popularized in Puerto Rico\'s underground scene. The syncopated snare on the "and" of beat 2 defines the feel. Song structures typically follow intro→verse→pre-chorus→chorus→drop cycles. Production is tight and lo-fi electronic.',
+  },
+  {
+    id: 'habanera',
+    name: 'Habanera',
+    subtitle: 'Afro-Cuban dance cell',
+    kick: [1,0,0,1, 1,0,1,0, 1,0,0,1, 1,0,1,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    bpmRange: [70, 120], bpmTypical: [80, 100],
+    genres: ['Habanera', 'Cuban Contradanza', 'Tango (influence)', 'Flamenco (rumba)'],
+    origin: ['Cuba (Havana)', 'Spain (via adoption)', 'Broader Latin tradition'],
+    instruments: ['Piano (left-hand ostinato)', 'Bass', 'Congas', 'Güiro', 'Ensemble percussion'],
+    conventions: 'The habanera rhythm is a characteristic bass/left-hand figure: long-short-short-short. It traveled globally and was adopted into 19th-century European art music (Bizet\'s Carmen). Still heard in Cuban son and flamenco rumba hybrids. Dance-focused, repeating groove structure.',
+  },
+  {
+    id: 'house',
+    name: 'House / EDM',
+    subtitle: '4-on-the-floor + backbeat',
+    kick: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    bpmRange: [118, 140], bpmTypical: [120, 130],
+    genres: ['House', 'Tech House', 'Deep House', 'Progressive House', 'EDM', 'Techno (adjacent)'],
+    origin: ['United States (Chicago)', 'The Warehouse, Chicago'],
+    instruments: ['TR-909 / drum machines', 'Synth basslines', 'Stabs / pads', 'Sampler'],
+    conventions: 'Chicago house emerged in the early 1980s around DJ Frankie Knuckles at The Warehouse. The steady 4-on-the-floor kick is the defining feature. Club arrangements follow 8/16/32-bar phrase logic with intro→breakdown→build→drop→outro structures. Hi-hats (open/closed patterns) are as important as kick/snare.',
+  },
+  {
+    id: 'dubstep',
+    name: 'Dubstep',
+    subtitle: 'Half-time shell',
+    kick: [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+    snare:[0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    bpmRange: [136, 145], bpmTypical: [138, 142],
+    genres: ['Dubstep', 'Brostep', 'Post-Dubstep', 'UK Bass', 'Riddim', 'Dark Garage'],
+    origin: ['United Kingdom (South London)', 'FWD>> at Plastic People', 'Rinse FM pirate radio'],
+    instruments: ['Sub-bass design', 'Wobble bass / LFO', 'Sparse drum samples', 'Dub space (delay/reverb)'],
+    conventions: 'South London origin in the early 2000s, grown from UK garage and dub. The half-time feel (snare on beat 3, heard as beat 2 of a half-time bar) creates a heavy, lurching groove. Drop-based structures with two distinct drops are standard. Sub-bass frequencies are central to the genre identity.',
+  },
+  {
+    id: 'ukgarage',
+    name: 'UK Garage',
+    subtitle: '2-step skeleton',
+    kick: [1,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,0,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    bpmRange: [128, 140], bpmTypical: [130, 138],
+    genres: ['UK Garage', '2-Step', 'Speed Garage', 'Grime (evolved from)', 'UKG Revival'],
+    origin: ['United Kingdom (London)', 'Pirate radio / club scene late 1990s'],
+    instruments: ['Chopped/treated vocals', 'Syncopated kicks', 'Tight snares/claps', 'Deep basslines'],
+    conventions: 'UK Garage developed from US house and R&B in London\'s club scene. The 2-step feel—where the kick doesn\'t fall on every beat—creates a shuffling, skippy groove. Pirate radio stations like Rinse FM were crucial to spreading the sound. Gave rise to grime and later dubstep.',
+  },
+  {
+    id: 'dnb',
+    name: 'Drum & Bass',
+    subtitle: '2-step breakbeat skeleton',
+    kick: [1,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,0,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    bpmRange: [158, 185], bpmTypical: [165, 175],
+    genres: ['Drum & Bass', 'Jungle', 'Liquid DnB', 'Neurofunk', 'Jump-Up', 'Drumstep'],
+    origin: ['United Kingdom', 'UK rave / breakbeat hardcore → jungle lineage'],
+    instruments: ['Chopped breakbeats (Amen, Think)', 'Heavy sub bass', 'Reese bass', 'Atmospheric pads'],
+    conventions: 'DnB evolved from UK jungle in the early 1990s. The skeleton 2-step pattern drives the groove but gets heavily chopped and layered with breakbeat samples. Reese bass (chorused sub-bass) is a signature sound. Arrangements follow intro→drop→breakdown→second drop structure. BPM range is the clearest differentiator from UK Garage.',
+  },
+  {
+    id: 'amen',
+    name: 'Amen Break',
+    subtitle: 'Classic breakbeat skeleton',
+    kick: [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,1,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,1],
+    bpmRange: [150, 190], bpmTypical: [160, 175],
+    genres: ['Jungle', 'Drum & Bass', 'Breakcore', 'UK hardcore', 'Amen-influenced hip-hop'],
+    origin: ['USA (1969 source: The Winstons)', 'UK jungle/DnB sampling culture (1990s)'],
+    instruments: ['Sampled break (audio)', 'Sub-bass', 'Ragga/MC vocals', 'Synth stabs'],
+    conventions: 'The Amen Break is a 1969 drum break from "Amen Brother" by The Winstons that became the most sampled break in history. UK jungle producers in the early 1990s chopped and time-stretched it at extreme tempos. The skeleton here is a simplified representation—real Amen usage involves extensive chopping and variation.',
+  },
+  {
+    id: 'boombap',
+    name: 'Boom Bap',
+    subtitle: 'Classic hip-hop anchor',
+    kick: [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    bpmRange: [75, 110], bpmTypical: [85, 96],
+    genres: ['Boom Bap', 'East Coast Hip-Hop', 'Golden Age Hip-Hop', 'Conscious Rap', 'Lo-fi Hip-Hop'],
+    origin: ['United States', 'Northeastern US / New York City (late 1980s–early 1990s)'],
+    instruments: ['MPC sampler', 'Chopped breaks', 'Sample-based bass', 'Dusty vinyl samples'],
+    conventions: 'Boom bap defines the sound of NYC hip-hop\'s golden age. The "boom" is the kick on beats 1 and 3, the "bap" is the snare on 2 and 4. Production relies heavily on chopped record samples processed through samplers like the MPC. Ghost notes, swing quantization, and sample chops differentiate this from the identical rock backbeat at lower tempo.',
+  },
+  {
+    id: 'trap',
+    name: 'Trap',
+    subtitle: 'Half-time backbone',
+    kick: [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+    snare:[0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    bpmRange: [125, 165], bpmTypical: [135, 150],
+    genres: ['Trap', 'SoundCloud Rap', 'Mumble Rap', 'Atlanta Rap', 'Dark Trap', 'Trap Pop'],
+    origin: ['United States (Atlanta, Georgia)', 'Also: Memphis — dual Southern origin narrative'],
+    instruments: ['808 kick/sub (long decay)', 'Rapid hi-hat rolls (32nds)', 'Clap/snare', 'Atmospheric synths', 'Melodic loops'],
+    conventions: 'Atlanta trap emerged in the late 2000s/early 2010s from producers like Lex Luger and Zaytoven. The 808 long-decay kick functions as both kick and bass simultaneously. Rapid hi-hat triplets and rolls between snares are equally defining. At 140 BPM, the half-time snare on beat 3 creates the characteristic lurch. Verse/hook song structures dominate.',
+  },
+  {
+    id: 'drill',
+    name: 'Drill',
+    subtitle: 'Half-time with dark slides',
+    kick: [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+    snare:[0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    bpmRange: [135, 145], bpmTypical: [138, 142],
+    genres: ['Chicago Drill', 'UK Drill', 'NY Drill', 'Afro Drill', 'Pop Drill'],
+    origin: ['United States (Chicago, early 2010s)', 'United Kingdom (Brixton, South London ~2012)'],
+    instruments: ['Sliding 808 bass', 'Orchestral/dark samples', 'Sparse trap drums', 'Drill strings'],
+    conventions: 'Chicago drill came from Chiraq street culture; UK drill evolved distinctly from 2012 with darker orchestral sample palettes and faster hi-hat patterns. The sliding 808 is essential—pitchbends throughout the bar. The skeleton is identical to trap but drill\'s sound design and sample palette are notably darker and more cinematic.',
+  },
+  {
+    id: 'amapiano-starter',
+    name: 'Amapiano',
+    subtitle: 'Piano-house starter shell',
+    kick: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    bpmRange: [108, 120], bpmTypical: [112, 118],
+    genres: ['Amapiano', 'S\'gija', 'Private School Piano', 'Afro House (adjacent)'],
+    origin: ['South Africa (Gauteng townships: Pretoria, Soweto, Alexandra)'],
+    instruments: ['Log drums (bass log)', 'Piano/keys', 'Synths', 'Percussion shakers', 'Guitar'],
+    conventions: 'Amapiano fuses kwaito, deep house, gqom, jazz, and lounge. The log drum bassline is the signature element—melodic, woody bass hits that carry the groove. Pianos provide melodic top lines. DJ sets run as long blends with gradual transitions. The kick/snare starter shell is house-like but the log drum and piano layers are what define the genre.',
+  },
+  {
+    id: 'amapiano-logdrum',
+    name: 'Amapiano',
+    subtitle: 'Log-drum sync template',
+    kick: [1,0,0,1, 0,1,1,0, 0,1,0,1, 0,0,1,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    bpmRange: [108, 120], bpmTypical: [112, 118],
+    genres: ['Amapiano', 'S\'gija', 'Log Drum Amapiano'],
+    origin: ['South Africa'],
+    instruments: ['Log drums (bass log)', 'Piano/keys', 'Percs', 'Synths'],
+    conventions: 'This syncopated kick template represents the log drum movement more closely—the kick proxies for the log drum bass hits in the grid. Real amapiano log drum is melodic and syncopated across the bar, often trading with piano chords. Extended groove-based mixes for dance floors.',
+  },
+  {
+    id: 'afrobeat',
+    name: 'Afrobeat',
+    subtitle: 'Fela / Tony Allen lineage',
+    kick: [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,0,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,1],
+    bpmRange: [95, 130], bpmTypical: [100, 115],
+    genres: ['Afrobeat', 'Afro-Funk', 'Highlife (influenced)', 'Afrojuju'],
+    origin: ['Nigeria (Lagos — Fela Kuti)', 'Ghana (highlife influence)'],
+    instruments: ['Full live drum kit + congas', 'Brass section (horns)', 'Electric guitar/bass', 'Organ/keys', 'Shekere', 'Multiple percussionists'],
+    conventions: 'Afrobeat was pioneered by Fela Kuti and his drummer Tony Allen, fusing Yoruba/Nigerian music with jazz, funk, and soul. Tony Allen\'s drumming is notable for its constant rhythmic movement and cross-rhythms. Songs are typically long-form (10–20+ minutes), groove-driven with layered instruments entering gradually. Politically charged lyrics were central to Fela\'s work.',
+  },
+  {
+    id: 'afrobeats',
+    name: 'Afrobeats',
+    subtitle: 'Modern West African pop',
+    kick: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    bpmRange: [96, 114], bpmTypical: [100, 110],
+    genres: ['Afrobeats', 'Afropop', 'Naija Pop', 'Highlife Pop', 'Afro-Fusion'],
+    origin: ['Nigeria', 'Ghana', 'United Kingdom (diaspora development)'],
+    instruments: ['Electronic drums/samples', 'Synth bass', 'Guitar', 'Traditional percussion samples', 'Melodic vocal hooks'],
+    conventions: 'Afrobeats (with "s") is a broad umbrella term for contemporary West African pop distinct from Fela-era Afrobeat. Developed through Nigeria and Ghana in the 2000s-2010s, with significant UK diaspora influence. Fuses dancehall, R&B, hip-hop, and highlife. Pop verse/chorus structures dominate. Artists like Burna Boy, Wizkid, and Davido define the modern sound.',
+  },
+  {
+    id: 'rock',
+    name: 'Rock',
+    subtitle: 'Basic backbeat',
+    kick: [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    bpmRange: [100, 160], bpmTypical: [110, 140],
+    genres: ['Rock', 'Pop', 'Alt-Rock', 'Punk', 'Indie', 'Pop-Rock'],
+    origin: ['United States (rock and roll origins)', 'United Kingdom (major development from mid-1960s)'],
+    instruments: ['Drum kit (acoustic)', 'Electric guitar', 'Electric bass', 'Keys/organ (many subgenres)'],
+    conventions: 'The most universal drum pattern in Western popular music. Kick on beats 1 and 3, snare on 2 and 4 defines the "backbeat." This template underlies hundreds of subgenres—differentiation comes via tempo, production, guitar tones, dynamics, and arrangement. Verse-chorus-bridge song forms dominate.',
+  },
+  {
+    id: 'blues',
+    name: 'Blues Shuffle',
+    subtitle: 'Triplet-feel backbeat',
+    kick: [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    bpmRange: [65, 130], bpmTypical: [80, 110],
+    genres: ['Blues', 'Blues-Rock', 'Shuffle', 'Chicago Blues', 'Texas Blues', 'Delta Blues'],
+    origin: ['United States (Deep South)', 'African-American communities'],
+    instruments: ['Drum kit (live)', 'Electric or acoustic guitar', 'Harmonica', 'Piano', 'Bass'],
+    conventions: 'The shuffle feel means the grid notation misrepresents the actual sound—16th notes are triplet-based, giving a swinging "long-short" feel. The 12-bar blues form with AAB lyric pattern is foundational. This skeleton is identical to rock at lower tempo, but shuffle quantization creates a completely different rhythmic character.',
+  },
+  {
+    id: 'jazz',
+    name: 'Jazz Swing',
+    subtitle: 'Kick/snare practice shell',
+    kick: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    bpmRange: [80, 300], bpmTypical: [120, 180],
+    genres: ['Swing', 'Bebop', 'Post-Bop', 'Cool Jazz', 'Hard Bop', 'Standards'],
+    origin: ['United States (New Orleans)', 'Swing era as US popular music (1930s–40s)'],
+    instruments: ['Ride cymbal (primary)', 'Hi-hat (2&4)', 'Brushes or sticks', 'Upright or electric bass', 'Piano comping'],
+    conventions: 'This grid is a practice skeleton only—in jazz the ride cymbal carries the swing pattern ("ting-tinka-ting") while the snare is used for comping and accents, not a rigid backbeat. The kick is often "feathered" (very soft four-on-the-floor). 32-bar AABA form dominates jazz standards. Swing feel means the "e" and "a" subdivisions swing like triplets.',
+  },
+  {
+    id: 'ska',
+    name: 'Ska',
+    subtitle: 'Upstroke guitar anchor',
+    kick: [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    snare:[0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    bpmRange: [130, 200], bpmTypical: [150, 180],
+    genres: ['Ska', '2-Tone Ska', 'Ska-Punk', 'Rocksteady (slowed)', 'Early Reggae'],
+    origin: ['Jamaica (originating in late 1950s)', 'United Kingdom (2-tone revival)', 'USA and Japan (global scenes)'],
+    instruments: ['Guitar ska stroke (upbeat offbeat)', 'Walking bassline', 'Brass section (trombone, trumpet, saxophone)', 'Organ', 'Drum kit'],
+    conventions: 'Ska originated in Jamaica absorbing American rhythm and blues. The defining feature is the guitar "ska stroke"—an upstroke accent on the offbeats that the drum skeleton doesn\'t capture. Horn sections are prominent. Ska became the precursor to rocksteady and reggae as the tempo slowed. The 2-Tone movement brought ska to UK mod/punk audiences in the late 1970s.',
+  },
+  {
+    id: 'onedrop',
+    name: 'Reggae One Drop',
+    subtitle: 'Kick + snare on beat 3',
+    kick: [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    snare:[0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    bpmRange: [60, 100], bpmTypical: [70, 90],
+    genres: ['Reggae', 'One Drop', 'Roots Reggae', 'Dub'],
+    origin: ['Jamaica', 'Classic Wailers-era band sound'],
+    instruments: ['Drum kit (kick+snare together on 3)', 'Bass (melodic/rhythmic)', 'Rhythm guitar "skank"', 'Organ upbeats', 'Horns'],
+    conventions: 'The one drop is the defining reggae rhythm—both kick and snare land on beat 3 (the "one" is "dropped," leaving it empty). Popularized and associated with Carlton Barrett of The Wailers. The skank (guitar upstroke on offbeats) and walking bass are equally important. Riddim-based structure—the same groove supports many different vocal takes.',
+  },
+  {
+    id: 'steppers',
+    name: 'Reggae Steppers',
+    subtitle: 'One drop + steady quarter kick',
+    kick: [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+    snare:[0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    bpmRange: [60, 100], bpmTypical: [70, 90],
+    genres: ['Steppers Reggae', 'Dub Steppers', 'Roots Reggae (steppers variant)', 'Digital Reggae'],
+    origin: ['Jamaica', 'Reggae/dub tradition'],
+    instruments: ['Kick on all four beats', 'Snare on beat 3', 'Bass', 'Guitar skank', 'Dub FX (echo/reverb heavy)'],
+    conventions: 'The steppers pattern adds a kick on every quarter note over the one drop—creating a more driving, march-like feel. Common in dub and digital reggae. Dub music emphasises heavy reverb and delay on drums, echo drops, and bass weight. Extended instrumental versions ("dub cuts") and riddim variations are part of the tradition.',
+  },
+];
+
+// ═══════════════════════════════════════════════════════
+// MUSIC THEORY DATA
+// ═══════════════════════════════════════════════════════
+
+const NOTE_NAMES_SHARP = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTE_NAMES_FLAT =  ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const MAJOR_INTERVALS = [0,2,4,5,7,9,11];
+const MINOR_INTERVALS = [0,2,3,5,7,8,10];
+const MAJOR_QUALITY = ['','m','m','','','m','dim'];
+const MINOR_QUALITY = ['m','dim','','m','m','',''];
+const MAJOR_ROMAN = ['I','ii','iii','IV','V','vi','vii°'];
+const MINOR_ROMAN = ['i','ii°','III','iv','v','VI','VII'];
+const TONIC_IDX = [0];
+const SUBDOMINANT_IDX = [3];
+const DOMINANT_IDX = [4];
+
+const KEY_DEFINITIONS = [
+  { root:0,  type:'major', name:'C Major',  notes:['C','D','E','F','G','A','B'],          useFlats:false },
+  { root:7,  type:'major', name:'G Major',  notes:['G','A','B','C','D','E','F#'],         useFlats:false },
+  { root:2,  type:'major', name:'D Major',  notes:['D','E','F#','G','A','B','C#'],        useFlats:false },
+  { root:9,  type:'major', name:'A Major',  notes:['A','B','C#','D','E','F#','G#'],       useFlats:false },
+  { root:4,  type:'major', name:'E Major',  notes:['E','F#','G#','A','B','C#','D#'],      useFlats:false },
+  { root:11, type:'major', name:'B Major',  notes:['B','C#','D#','E','F#','G#','A#'],     useFlats:false },
+  { root:5,  type:'major', name:'F Major',  notes:['F','G','A','Bb','C','D','E'],         useFlats:true  },
+  { root:10, type:'major', name:'Bb Major', notes:['Bb','C','D','Eb','F','G','A'],        useFlats:true  },
+  { root:3,  type:'major', name:'Eb Major', notes:['Eb','F','G','Ab','Bb','C','D'],       useFlats:true  },
+  { root:8,  type:'major', name:'Ab Major', notes:['Ab','Bb','C','Db','Eb','F','G'],      useFlats:true  },
+  { root:1,  type:'major', name:'Db Major', notes:['Db','Eb','F','Gb','Ab','Bb','C'],     useFlats:true  },
+  { root:6,  type:'major', name:'F# Major', notes:['F#','G#','A#','B','C#','D#','E#'],    useFlats:false },
+  { root:9,  type:'minor', name:'A Minor',  notes:['A','B','C','D','E','F','G'],          useFlats:false },
+  { root:4,  type:'minor', name:'E Minor',  notes:['E','F#','G','A','B','C','D'],         useFlats:false },
+  { root:11, type:'minor', name:'B Minor',  notes:['B','C#','D','E','F#','G','A'],        useFlats:false },
+  { root:6,  type:'minor', name:'F# Minor', notes:['F#','G#','A','B','C#','D','E'],       useFlats:false },
+  { root:1,  type:'minor', name:'C# Minor', notes:['C#','D#','E','F#','G#','A','B'],      useFlats:false },
+  { root:2,  type:'minor', name:'D Minor',  notes:['D','E','F','G','A','Bb','C'],         useFlats:true  },
+  { root:7,  type:'minor', name:'G Minor',  notes:['G','A','Bb','C','D','Eb','F'],        useFlats:true  },
+  { root:0,  type:'minor', name:'C Minor',  notes:['C','D','Eb','F','G','Ab','Bb'],       useFlats:true  },
+  { root:5,  type:'minor', name:'F Minor',  notes:['F','G','Ab','Bb','C','Db','Eb'],      useFlats:true  },
+  { root:10, type:'minor', name:'Bb Minor', notes:['Bb','C','Db','Eb','F','Gb','Ab'],     useFlats:true  },
+  { root:3,  type:'minor', name:'Eb Minor', notes:['Eb','F','Gb','Ab','Bb','Cb','Db'],    useFlats:true  },
+  { root:8,  type:'minor', name:'Ab Minor', notes:['Ab','Bb','Cb','Db','Eb','Fb','Gb'],   useFlats:true  },
+];
+
+const RELATIVE_MAP = {
+  'C Major': 'A Minor',   'G Major': 'E Minor',   'D Major': 'B Minor',
+  'A Major': 'F# Minor',  'E Major': 'C# Minor',  'B Major': 'G# Minor',
+  'F Major': 'D Minor',   'Bb Major': 'G Minor',  'Eb Major': 'C Minor',
+  'Ab Major': 'F Minor',  'Db Major': 'Bb Minor', 'F# Major': 'D# Minor',
+  'A Minor': 'C Major',   'E Minor': 'G Major',   'B Minor': 'D Major',
+  'F# Minor': 'A Major',  'C# Minor': 'E Major',  'D Minor': 'F Major',
+  'G Minor': 'Bb Major',  'C Minor': 'Eb Major',  'F Minor': 'Ab Major',
+  'Bb Minor': 'Db Major', 'Eb Minor': 'Gb Major', 'Ab Minor': 'Cb Major',
+};
+
+const COMMON_PROGRESSIONS_MAJOR = [
+  { name:'Pop Axis', desc:'Extremely common in pop and rock since the 1950s', chords:['I','vi','IV','V'] },
+  { name:'Four Chords', desc:'Hundreds of pop songs — I→V→vi→IV', chords:['I','V','vi','IV'] },
+  { name:'ii–V–I', desc:'Jazz cornerstone, also in bossa nova and soul', chords:['ii7','V7','Imaj7'] },
+  { name:'I–IV–V–I', desc:'Blues, rock, country foundation', chords:['I','IV','V','I'] },
+  { name:'vi–IV–I–V', desc:'"Sensitive Female Chord Progression"', chords:['vi','IV','I','V'] },
+];
+const COMMON_PROGRESSIONS_MINOR = [
+  { name:'Natural Minor', desc:'Dark, classical, metal', chords:['i','VII','VI','VII'] },
+  { name:'Andalusian Cadence', desc:'Flamenco, heavy metal, film scores', chords:['i','VII','VI','V'] },
+  { name:'Minor ii–V–i', desc:'Jazz minor standard', chords:['ii°7','V7','i'] },
+  { name:'i–VI–III–VII', desc:'Epic/cinematic, pop-minor', chords:['i','VI','III','VII'] },
+  { name:'i–iv–V–i', desc:'Classical minor cadence', chords:['i','iv','V','i'] },
+];
+
+function buildKeyData(def) {
+  const intervals = def.type === 'major' ? MAJOR_INTERVALS : MINOR_INTERVALS;
+  const qualities = def.type === 'major' ? MAJOR_QUALITY : MINOR_QUALITY;
+  const romans = def.type === 'major' ? MAJOR_ROMAN : MINOR_ROMAN;
+  
+  const noteClasses = intervals.map(i => (def.root + i) % 12);
+  
+  // Build triad names
+  const chords = def.notes.map((note, i) => {
+    let name = note;
+    // Remove accidental confusion for display: E# → F, B# → C, Cb → B, Fb → E
+    if (name === 'E#') name = 'F';
+    if (name === 'B#') name = 'C';
+    if (name === 'Cb') name = 'B';
+    if (name === 'Fb') name = 'E';
+    const q = qualities[i];
+    if (q === '') return name;
+    if (q === 'm') return name + 'm';
+    if (q === 'dim') return name + 'dim';
+    return name;
+  });
+  
+  // Cadences (chord names)
+  const cadences = def.type === 'major' ? [
+    { name:'Perfect Authentic (V→I)',      chords: [chords[4], chords[0]], desc:'Strongest resolution; common phrase ending' },
+    { name:'Plagal (IV→I)',                chords: [chords[3], chords[0]], desc:'"Amen" cadence; soft, hymnal resolution' },
+    { name:'Half (I→V)',                   chords: [chords[0], chords[4]], desc:'Open, creates tension; ends mid-phrase' },
+    { name:'Deceptive (V→vi)',             chords: [chords[4], chords[5]], desc:'Surprise resolution; adds emotion and extension' },
+    { name:'ii–V–I',                       chords: [chords[1], chords[4], chords[0]], desc:'Jazz standard cadence; adds sophistication' },
+    { name:'IV–V–I',                       chords: [chords[3], chords[4], chords[0]], desc:'Classic cadential approach in classical/pop' },
+  ] : [
+    { name:'Authentic (V→i)',              chords: [chords[4], chords[0]], desc:'Strong resolution in minor (V often raised to major)' },
+    { name:'Plagal (iv→i)',                chords: [chords[3], chords[0]], desc:'Soft minor resolution; modal feel' },
+    { name:'Half (i→V)',                   chords: [chords[0], chords[4]], desc:'Common minor half cadence; unresolved' },
+    { name:'Andalusian (i–VII–VI–V)',      chords: [chords[0], chords[6], chords[5], chords[4]], desc:'Flamenco/metal descending progression' },
+    { name:'Minor ii°–V–i',               chords: [chords[1], chords[4], chords[0]], desc:'Jazz minor cadence' },
+    { name:'Natural (i–VII–VI–VII)',       chords: [chords[0], chords[6], chords[5], chords[6]], desc:'Natural minor vamp' },
+  ];
+  
+  const progressions = (def.type === 'major' ? COMMON_PROGRESSIONS_MAJOR : COMMON_PROGRESSIONS_MINOR).map(p => ({
+    name: p.name,
+    desc: p.desc,
+    chords: p.chords.map(roman => {
+      const romanMap = {};
+      romans.forEach((r, i) => { romanMap[r] = chords[i]; });
+      // Handle 7th chord labels
+      const base = roman.replace('7','').replace('maj','').replace('°','dim');
+      const found = Object.entries(romanMap).find(([k]) => k.replace('°','').replace('7','') === base.replace('m',''));
+      return found ? found[1] : roman;
+    })
+  }));
+  
+  return { ...def, noteClasses, chords, romans, cadences, progressions,
+           relative: RELATIVE_MAP[def.name] || '' };
+}
+
+const KEYS = KEY_DEFINITIONS.map(buildKeyData);
+
+// ═══════════════════════════════════════════════════════
+// AUDIO ENGINE
+// ═══════════════════════════════════════════════════════
+
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playKick(when = 0) {
+  const ctx = getAudioCtx();
+  const t = when || ctx.currentTime;
+
+  // Sub sine sweep
+  const osc = ctx.createOscillator();
+  const oscGain = ctx.createGain();
+  osc.connect(oscGain); oscGain.connect(ctx.destination);
+  osc.frequency.setValueAtTime(180, t);
+  osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.45);
+  oscGain.gain.setValueAtTime(0.9, t);
+  oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+  osc.start(t); osc.stop(t + 0.5);
+
+  // Click transient
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const g = ctx.createGain();
+  src.connect(g); g.connect(ctx.destination);
+  g.gain.setValueAtTime(0.4, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  src.start(t); src.stop(t + 0.05);
+}
+
+function playSnare(when = 0) {
+  const ctx = getAudioCtx();
+  const t = when || ctx.currentTime;
+
+  // Noise body
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.25, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const filt = ctx.createBiquadFilter();
+  filt.type = 'bandpass'; filt.frequency.value = 3500; filt.Q.value = 0.8;
+  const g = ctx.createGain();
+  src.connect(filt); filt.connect(g); g.connect(ctx.destination);
+  g.gain.setValueAtTime(0.7, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+  src.start(t); src.stop(t + 0.25);
+
+  // Body tone
+  const osc = ctx.createOscillator();
+  const og = ctx.createGain();
+  osc.connect(og); og.connect(ctx.destination);
+  osc.frequency.value = 200;
+  og.gain.setValueAtTime(0.35, t);
+  og.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+  osc.start(t); osc.stop(t + 0.12);
+}
+
+// ── PIANO SYNTH VOICES ──────────────────────────────────
+
+let currentSound = 'piano'; // piano | organ | marimba | pad | bass
+
+function playPianoNote(midiNote, soundOverride) {
+  const ctx = getAudioCtx();
+  const freq = 440 * Math.pow(2, (midiNote - 69) / 12);
+  const t = ctx.currentTime;
+  const snd = soundOverride || currentSound;
+
+  if (snd === 'piano') {
+    // Triangle + sine blend — punchy attack, medium decay
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    osc1.type = 'triangle'; osc1.frequency.value = freq;
+    osc2.type = 'sine';     osc2.frequency.value = freq * 2;
+    const g = ctx.createGain();
+    osc1.connect(g); osc2.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.22, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.10, t + 0.18);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.4);
+    osc1.start(t); osc2.start(t); osc1.stop(t + 1.4); osc2.stop(t + 1.4);
+
+  } else if (snd === 'organ') {
+    // Hammond-style: fundamental + 2nd + 3rd harmonics, steady sustain
+    const dur = 1.8;
+    const gains = [0.5, 0.3, 0.15];
+    gains.forEach((amp, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine'; osc.frequency.value = freq * (i + 1);
+      const g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(amp * 0.38, t + 0.015);
+      g.gain.setValueAtTime(amp * 0.38, t + dur - 0.08);
+      g.gain.linearRampToValueAtTime(0, t + dur);
+      osc.start(t); osc.stop(t + dur);
+    });
+
+  } else if (snd === 'marimba') {
+    // Sine with quick decay + slight inharmonic overtone
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    osc1.type = 'sine'; osc1.frequency.value = freq;
+    osc2.type = 'sine'; osc2.frequency.value = freq * 3.95; // slightly inharmonic
+    const g1 = ctx.createGain(); const g2 = ctx.createGain();
+    osc1.connect(g1); osc2.connect(g2);
+    g1.connect(ctx.destination); g2.connect(ctx.destination);
+    g1.gain.setValueAtTime(0.32, t); g1.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    g2.gain.setValueAtTime(0.12, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    osc1.start(t); osc2.start(t); osc1.stop(t + 0.6); osc2.stop(t + 0.2);
+
+  } else if (snd === 'pad') {
+    // Soft detuned saw pad with slow attack
+    const dur = 2.2;
+    [-5, 0, 5].forEach(detuneCents => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth'; osc.frequency.value = freq;
+      osc.detune.value = detuneCents;
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.frequency.value = freq * 3.5; filt.Q.value = 0.7;
+      const g = ctx.createGain();
+      osc.connect(filt); filt.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.09, t + 0.25);
+      g.gain.setValueAtTime(0.09, t + dur - 0.3);
+      g.gain.linearRampToValueAtTime(0, t + dur);
+      osc.start(t); osc.stop(t + dur);
+    });
+
+  } else if (snd === 'bass') {
+    // Sub sine + slight square for presence, one octave down
+    const bassFreq = freq / 2;
+    const dur = 0.75;
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    osc1.type = 'sine';   osc1.frequency.value = bassFreq;
+    osc2.type = 'square'; osc2.frequency.value = bassFreq;
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'lowpass'; filt.frequency.value = 400; filt.Q.value = 1.2;
+    const g1 = ctx.createGain(); const gf = ctx.createGain();
+    osc1.connect(g1); osc2.connect(filt); filt.connect(gf);
+    g1.connect(ctx.destination); gf.connect(ctx.destination);
+    g1.gain.setValueAtTime(0.6, t);   g1.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    gf.gain.setValueAtTime(0.15, t);  gf.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.5);
+    osc1.start(t); osc2.start(t); osc1.stop(t + dur); osc2.stop(t + dur);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// STEP SEQUENCER
+// ═══════════════════════════════════════════════════════
+
+let kickSteps = new Array(16).fill(0);
+let snareSteps = new Array(16).fill(0);
+let isPlaying = false;
+let bpm = 120;
+let currentStep = 0;
+let nextNoteTime = 0;
+let timerID = null;
+let lastPlayheadStep = -1;
+const notesQueue = [];
+
+const LOOKAHEAD = 25.0;
+const SCHEDULE_AHEAD = 0.1;
+
+function stepDuration() { return (60.0 / bpm) / 4; }
+
+function scheduleStep(step, time) {
+  notesQueue.push({ step, time });
+  if (kickSteps[step]) playKick(time);
+  if (snareSteps[step]) playSnare(time);
+}
+
+function advanceStep() {
+  nextNoteTime += stepDuration();
+  currentStep = (currentStep + 1) % 16;
+}
+
+function runScheduler() {
+  const ctx = getAudioCtx();
+  while (nextNoteTime < ctx.currentTime + SCHEDULE_AHEAD) {
+    scheduleStep(currentStep, nextNoteTime);
+    advanceStep();
+  }
+  timerID = window.setTimeout(runScheduler, LOOKAHEAD);
+}
+
+function drawPlayhead() {
+  const ctx2 = audioCtx;
+  if (!ctx2 || !isPlaying) return;
+  let currentPlayhead = lastPlayheadStep;
+  while (notesQueue.length && notesQueue[0].time < ctx2.currentTime) {
+    currentPlayhead = notesQueue[0].step;
+    notesQueue.shift();
+  }
+  if (currentPlayhead !== lastPlayheadStep) {
+    // Remove old playhead
+    document.querySelectorAll('.step-btn.playhead').forEach(b => b.classList.remove('playhead'));
+    // Add new
+    const kickBtns = document.querySelectorAll('#kickGrid .step-btn');
+    const snareBtns = document.querySelectorAll('#snareGrid .step-btn');
+    if (kickBtns[currentPlayhead]) kickBtns[currentPlayhead].classList.add('playhead');
+    if (snareBtns[currentPlayhead]) snareBtns[currentPlayhead].classList.add('playhead');
+    lastPlayheadStep = currentPlayhead;
+  }
+  requestAnimationFrame(drawPlayhead);
+}
+
+function startPlayback() {
+  const ctx = getAudioCtx();
+  isPlaying = true;
+  currentStep = 0;
+  notesQueue.length = 0;
+  nextNoteTime = ctx.currentTime + 0.05;
+  runScheduler();
+  requestAnimationFrame(drawPlayhead);
+  document.getElementById('playBtn').textContent = '■ STOP';
+  document.getElementById('playBtn').classList.add('playing');
+}
+
+function stopPlayback() {
+  isPlaying = false;
+  clearTimeout(timerID);
+  document.querySelectorAll('.step-btn.playhead').forEach(b => b.classList.remove('playhead'));
+  lastPlayheadStep = -1;
+  document.getElementById('playBtn').textContent = '▶ PLAY';
+  document.getElementById('playBtn').classList.remove('playing');
+}
+
+// ═══════════════════════════════════════════════════════
+// CARD PREVIEW PLAYER  (independent mini-sequencer)
+// ═══════════════════════════════════════════════════════
+
+let previewState = {
+  id: null,          // rhythm id currently previewing
+  timerID: null,
+  step: 0,
+  nextTime: 0,
+  queue: [],
+  rafID: null,
+};
+
+function stopPreview() {
+  if (previewState.timerID) clearTimeout(previewState.timerID);
+  if (previewState.rafID) cancelAnimationFrame(previewState.rafID);
+  // Reset all preview step indicators
+  document.querySelectorAll('.preview-step.active-head').forEach(el => el.classList.remove('active-head'));
+  // Reset button label
+  document.querySelectorAll('.preview-btn.previewing').forEach(btn => {
+    btn.textContent = '▶ PREVIEW';
+    btn.classList.remove('previewing');
+  });
+  previewState.id = null;
+  previewState.queue = [];
+}
+
+function startPreview(rhythmId, btnEl) {
+  // Stop any running preview first (including this one if re-clicked)
+  const wasThis = previewState.id === rhythmId;
+  stopPreview();
+  if (wasThis) return; // toggle off
+
+  // Stop main sequencer too — one player at a time
+  if (isPlaying) stopPlayback();
+
+  const rhythm = RHYTHMS.find(r => r.id === rhythmId);
+  if (!rhythm) return;
+
+  const ctx = getAudioCtx();
+  previewState.id = rhythmId;
+  previewState.step = 0;
+  previewState.nextTime = ctx.currentTime + 0.05;
+  previewState.queue = [];
+
+  btnEl.textContent = '■ STOP';
+  btnEl.classList.add('previewing');
+
+  function schedulePreviewStep(step, time) {
+    previewState.queue.push({ step, time });
+    if (rhythm.kick[step]) playKick(time);
+    if (rhythm.snare[step]) playSnare(time);
+  }
+
+  function advancePreviewStep() {
+    previewState.nextTime += stepDuration();
+    previewState.step = (previewState.step + 1) % 16;
+  }
+
+  function runPreviewScheduler() {
+    const ctx2 = getAudioCtx();
+    while (previewState.nextTime < ctx2.currentTime + SCHEDULE_AHEAD) {
+      schedulePreviewStep(previewState.step, previewState.nextTime);
+      advancePreviewStep();
+    }
+    previewState.timerID = setTimeout(runPreviewScheduler, LOOKAHEAD);
+  }
+
+  function drawPreviewHead() {
+    const ctx2 = getAudioCtx();
+    let currentHead = -1;
+    while (previewState.queue.length && previewState.queue[0].time < ctx2.currentTime) {
+      currentHead = previewState.queue[0].step;
+      previewState.queue.shift();
+    }
+    if (currentHead >= 0) {
+      // Find the mini step row for this card
+      const stepEls = document.querySelectorAll(`.preview-steps[data-rid="${rhythmId}"] .preview-step`);
+      stepEls.forEach((el, i) => el.classList.toggle('active-head', i === currentHead));
+    }
+    if (previewState.id === rhythmId) {
+      previewState.rafID = requestAnimationFrame(drawPreviewHead);
+    }
+  }
+
+  runPreviewScheduler();
+  requestAnimationFrame(drawPreviewHead);
+}
+
+// ═══════════════════════════════════════════════════════
+// SEQUENCER UI
+// ═══════════════════════════════════════════════════════
+
+const BEAT_LABELS = ['1','e','&','a','2','e','&','a','3','e','&','a','4','e','&','a'];
+
+function buildSequencerUI() {
+  const beatLabels = document.getElementById('beatLabels');
+  beatLabels.innerHTML = BEAT_LABELS.map((l, i) =>
+    `<div class="beat-label${i%4===0?' beat-start':''}">${l}</div>`
+  ).join('');
+
+  const kickGrid = document.getElementById('kickGrid');
+  const snareGrid = document.getElementById('snareGrid');
+
+  kickGrid.innerHTML = Array.from({length:16}, (_,i) =>
+    `<button class="step-btn${i%4===0?' beat-1':''}" data-row="kick" data-step="${i}" aria-label="Kick step ${i+1}"></button>`
+  ).join('');
+
+  snareGrid.innerHTML = Array.from({length:16}, (_,i) =>
+    `<button class="step-btn${i%4===0?' beat-1':''}" data-row="snare" data-step="${i}" aria-label="Snare step ${i+1}"></button>`
+  ).join('');
+
+  kickGrid.querySelectorAll('.step-btn').forEach(btn => {
+    btn.addEventListener('click', () => toggleStep('kick', parseInt(btn.dataset.step)));
+  });
+  snareGrid.querySelectorAll('.step-btn').forEach(btn => {
+    btn.addEventListener('click', () => toggleStep('snare', parseInt(btn.dataset.step)));
+  });
+}
+
+function toggleStep(row, step) {
+  if (row === 'kick') {
+    kickSteps[step] = kickSteps[step] ? 0 : 1;
+    const btn = document.querySelector(`#kickGrid .step-btn[data-step="${step}"]`);
+    btn.classList.toggle('active', kickSteps[step] === 1);
+    if (kickSteps[step]) playKick();
+  } else {
+    snareSteps[step] = snareSteps[step] ? 0 : 1;
+    const btn = document.querySelector(`#snareGrid .step-btn[data-step="${step}"]`);
+    btn.classList.toggle('active', snareSteps[step] === 1);
+    if (snareSteps[step]) playSnare();
+  }
+}
+
+function clearSequencer() {
+  kickSteps.fill(0); snareSteps.fill(0);
+  document.querySelectorAll('.step-btn.active').forEach(b => b.classList.remove('active'));
+}
+
+// ═══════════════════════════════════════════════════════
+// PATTERN MATCHING
+// ═══════════════════════════════════════════════════════
+
+function patternSimilarity(userSteps, dbSteps) {
+  let match = 0;
+  for (let i = 0; i < 16; i++) {
+    if ((userSteps[i] ? 1 : 0) === (dbSteps[i] ? 1 : 0)) match++;
+  }
+  return match / 16;
+}
+
+function bpmScore(bpm, range) {
+  if (bpm >= range[0] && bpm <= range[1]) return 1;
+  const dist = Math.min(Math.abs(bpm - range[0]), Math.abs(bpm - range[1]));
+  return Math.max(0, 1 - dist / 40);
+}
+
+function stepsToPatternString(k, s) {
+  const kStr = k.map(v => v ? 'x' : '-').join('').replace(/(.{4})/g, '$1|').slice(0,-1);
+  const sStr = s.map(v => v ? 'x' : '-').join('').replace(/(.{4})/g, '$1|').slice(0,-1);
+  return { k: kStr, s: sStr };
+}
+
+function matchRhythms() {
+  const totalHits = kickSteps.filter(Boolean).length + snareSteps.filter(Boolean).length;
+  if (totalHits === 0) {
+    renderRhythmResults([]);
+    return;
+  }
+
+  const results = RHYTHMS.map(r => {
+    const kickSim = patternSimilarity(kickSteps, r.kick);
+    const snareSim = patternSimilarity(snareSteps, r.snare);
+    const patScore = (kickSim * 0.6 + snareSim * 0.4);
+    const bpmBonus = bpmScore(bpm, r.bpmRange) * 0.25;
+    const combined = patScore * 0.75 + bpmBonus;
+    return { rhythm: r, kickSim, snareSim, patScore, combined };
+  }).filter(r => r.patScore >= 0.75)
+    .sort((a, b) => b.combined - a.combined);
+
+  renderRhythmResults(results);
+}
+
+function renderRhythmResults(results) {
+  const container = document.getElementById('rhythmResults');
+  if (results.length === 0) {
+    container.innerHTML = `<div class="no-results">No strong pattern matches found.<br><span style="font-size:10px;color:var(--text-3)">Try adding more steps, or adjust the pattern.</span></div>`;
+    return;
+  }
+
+  const { k: userK, s: userS } = stepsToPatternString(kickSteps, snareSteps);
+
+  container.innerHTML = `
+    <div class="results-header">
+      <span class="section-label">PATTERN MATCHES</span>
+      <span class="results-count">${results.length} result${results.length>1?'s':''}</span>
+    </div>
+    <div class="result-cards">
+      ${results.map((r, idx) => renderCard(r, idx)).join('')}
+    </div>`;
+
+  container.querySelectorAll('.result-card').forEach(card => {
+    card.addEventListener('click', e => {
+      // Don't expand if clicking preview button
+      if (e.target.closest('.preview-btn')) return;
+      const wasExpanded = card.classList.contains('expanded');
+      container.querySelectorAll('.result-card.expanded').forEach(c => c.classList.remove('expanded'));
+      if (!wasExpanded) card.classList.add('expanded');
+    });
+  });
+
+  // Wire up preview buttons
+  container.querySelectorAll('.preview-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      startPreview(btn.dataset.rid, btn);
+    });
+  });
+}
+
+function renderCard(r, idx) {
+  const pct = Math.round(r.patScore * 100);
+  const scoreClass = pct === 100 ? 'score-100' : pct >= 85 ? 'score-high' : 'score-mid';
+  const { k: dbK, s: dbS } = stepsToPatternString(r.rhythm.kick, r.rhythm.snare);
+
+  const patternHTML = (str, type) =>
+    str.split('').map(c => {
+      if (c === '|') return '<span class="beat-divider">|</span>';
+      if (c === 'x') return `<span class="hit-${type}">${c}</span>`;
+      return `<span>${c}</span>`;
+    }).join('');
+
+  // Build mini step strip (16 dots showing kick/snare hits)
+  const miniSteps = Array.from({length:16}, (_, i) => {
+    const hasK = r.rhythm.kick[i] ? true : false;
+    const hasS = r.rhythm.snare[i] ? true : false;
+    const cls = ['preview-step',
+      i%4===0 ? 'beat-1' : '',
+      hasK && hasS ? 'has-both' : hasK ? 'has-k' : hasS ? 'has-s' : ''
+    ].filter(Boolean).join(' ');
+    return `<div class="${cls}"></div>`;
+  }).join('');
+
+  return `
+    <div class="result-card ${scoreClass}" data-rid="${r.rhythm.id}">
+      <div class="card-top">
+        <div class="card-name">${r.rhythm.name}</div>
+        <div class="card-score">${pct}%</div>
+      </div>
+      <div class="card-subtitle">${r.rhythm.subtitle}</div>
+      <div class="card-genres">
+        ${r.rhythm.genres.slice(0,4).map(g => `<span class="genre-tag">${g}</span>`).join('')}
+      </div>
+      <div class="card-bpm">BPM range: ${r.rhythm.bpmRange[0]}–${r.rhythm.bpmRange[1]} &nbsp;·&nbsp; typical: ${r.rhythm.bpmTypical[0]}–${r.rhythm.bpmTypical[1]}</div>
+
+      <div class="card-preview">
+        <button class="preview-btn" data-rid="${r.rhythm.id}">▶ PREVIEW</button>
+        <div class="preview-steps" data-rid="${r.rhythm.id}">${miniSteps}</div>
+      </div>
+
+      <div class="card-detail">
+        <div class="detail-section">
+          <div class="detail-label">Origin</div>
+          <div class="origin-list">${r.rhythm.origin.map(o => `<span class="origin-tag">${o}</span>`).join('')}</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Key Instruments</div>
+          <div class="instrument-list">${r.rhythm.instruments.map(i => `<span class="instrument-tag">${i}</span>`).join('')}</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Genre Conventions</div>
+          <div class="detail-text">${r.rhythm.conventions}</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Database Pattern</div>
+          <div class="pattern-preview">K: ${patternHTML(dbK, 'k')}<br>S: ${patternHTML(dbS, 's')}</div>
+        </div>
+        ${idx === 0 ? `<div class="detail-label" style="margin-top:8px;color:var(--kick)">▲ CLOSEST MATCH</div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// PIANO KEYBOARD — octave-shifting, lock, QWERTY
+// ═══════════════════════════════════════════════════════
+
+const IS_BLACK_PC = new Set([1, 3, 6, 8, 10]);
+const NOTE_NAMES_FLAT = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+
+let pianoOctave = 4;   // base octave shown (C4 = midi 60)
+let keyLocked   = false;
+let scalePlayTimer = null;
+let scalePlayStep  = -1;
+
+// QWERTY layout: white keys = ASDFGHJK, black keys = WE_TYU
+// Maps keyboard key → semitone offset from tonic of current octave (C)
+const QWERTY_WHITE = { a:0, s:2, d:4, f:5, g:7, h:9, j:11, k:12 };
+const QWERTY_BLACK = { w:1, e:3, t:6, y:8, u:10 };
+const QWERTY_ALL   = { ...QWERTY_WHITE, ...QWERTY_BLACK };
+
+// Build full chromatic layout for any octave range
+function buildChromaticRange(startOctave) {
+  const start = (startOctave + 1) * 12; // C(startOctave) midi
+  const end   = start + 24;             // two octaves
+  const keys  = [];
+  for (let midi = start; midi <= end; midi++) {
+    const pc  = midi % 12;
+    const oct = Math.floor(midi / 12) - 1;
+    keys.push({ midi, pc, oct, isBlack: IS_BLACK_PC.has(pc) });
+  }
+  return keys;
+}
+
+function buildPianoUI() {
+  const piano      = document.getElementById('piano');
+  piano.innerHTML  = '';
+  const chromatic  = buildChromaticRange(pianoOctave);
+  const whiteKeys  = chromatic.filter(k => !k.isBlack);
+  const numWhite   = whiteKeys.length;
+
+  // QWERTY label mapping: white keys get ASDFGHJK, black get WETYU
+  // (only applies to the octave that starts at pianoOctave)
+  const baseStart  = (pianoOctave + 1) * 12;
+  const qwKeyMap   = {}; // midi → kbd letter
+  Object.entries(QWERTY_WHITE).forEach(([key, semis]) => { qwKeyMap[baseStart + semis] = key.toUpperCase(); });
+  Object.entries(QWERTY_BLACK).forEach(([key, semis]) => { qwKeyMap[baseStart + semis] = key.toUpperCase(); });
+
+  // White keys — flex
+  whiteKeys.forEach(k => {
+    const el = document.createElement('div');
+    el.className  = 'white-key';
+    el.dataset.midi = k.midi;
+    el.dataset.pc   = k.pc;
+    if (k.pc === 0) {
+      const lbl = document.createElement('div');
+      lbl.className   = 'key-name';
+      lbl.textContent = NOTE_NAMES_SHARP[0] + k.oct;
+      el.appendChild(lbl);
+    }
+    if (qwKeyMap[k.midi]) {
+      const kbl = document.createElement('div');
+      kbl.className   = 'key-kblabel';
+      kbl.textContent = qwKeyMap[k.midi];
+      el.appendChild(kbl);
+    }
+    if (selectedNotes.has(k.pc)) el.classList.add('active');
+    el.addEventListener('click', () => handlePianoKey(k.midi));
+    piano.appendChild(el);
+  });
+
+  // Black keys — absolute %, computed from white key grid
+  chromatic.filter(k => k.isBlack).forEach(bk => {
+    const leftMidi = bk.midi - 1;
+    const leftIdx  = whiteKeys.findIndex(w => w.midi === leftMidi);
+    if (leftIdx < 0) return;
+    const W  = 100 / numWhite;
+    const BW = W * 0.62;
+    const leftPct = (leftIdx + 1) * W - BW / 2;
+
+    const el = document.createElement('div');
+    el.className    = 'black-key';
+    el.dataset.midi = bk.midi;
+    el.dataset.pc   = bk.pc;
+    el.style.left   = leftPct.toFixed(4) + '%';
+    el.style.width  = BW.toFixed(4) + '%';
+
+    const nameEl = document.createElement('div');
+    nameEl.className   = 'black-key-name';
+    nameEl.textContent = NOTE_NAMES_SHARP[bk.pc];
+    el.appendChild(nameEl);
+
+    if (qwKeyMap[bk.midi]) {
+      const kbl = document.createElement('div');
+      kbl.className   = 'key-kblabel';
+      kbl.textContent = qwKeyMap[bk.midi];
+      el.appendChild(kbl);
+    }
+    if (selectedNotes.has(bk.pc)) el.classList.add('active');
+    el.addEventListener('click', e => { e.stopPropagation(); handlePianoKey(bk.midi); });
+    piano.appendChild(el);
+  });
+
+  document.getElementById('octaveDisplay').textContent = `OCT ${pianoOctave}`;
+  document.getElementById('octDownBtn').disabled = pianoOctave <= 1;
+  document.getElementById('octUpBtn').disabled   = pianoOctave >= 7;
+}
+
+// Central key-press handler — respects lock
+function handlePianoKey(midi) {
+  playPianoNote(midi);
+  flashKey(midi);
+  if (!keyLocked) {
+    toggleNoteLogging(midi % 12);
+  }
+}
+
+function flashKey(midi) {
+  const el = document.querySelector(`[data-midi="${midi}"]`);
+  if (!el) return;
+  el.classList.remove('flash');
+  void el.offsetWidth; // force reflow to restart animation
+  el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 300);
+}
+
+// ═══════════════════════════════════════════════════════
+// KEY DETECTION
+// ═══════════════════════════════════════════════════════
+
+let selectedNotes  = new Set();  // pitch classes 0–11
+let selectedKeyName = null;
+
+function toggleNoteLogging(pc) {
+  if (selectedNotes.has(pc)) {
+    selectedNotes.delete(pc);
+    document.querySelectorAll(`[data-pc="${pc}"]`).forEach(k => k.classList.remove('active'));
+  } else {
+    selectedNotes.add(pc);
+    document.querySelectorAll(`[data-pc="${pc}"]`).forEach(k => k.classList.add('active'));
+  }
+  renderSelectedNotes();
+  detectAndRenderKeys();
+}
+
+function renderSelectedNotes() {
+  const container = document.getElementById('selectedNotesDisplay');
+  if (selectedNotes.size === 0) {
+    container.innerHTML = '<span class="no-notes-hint">No notes logged — click keys or type on keyboard</span>';
+    return;
+  }
+  const sorted = [...selectedNotes].sort((a, b) => a - b);
+  container.innerHTML = sorted.map(pc =>
+    `<span class="selected-note-chip" data-pc="${pc}" title="Click to remove">${NOTE_NAMES_SHARP[pc]}</span>`
+  ).join('');
+  container.querySelectorAll('.selected-note-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const pc = parseInt(chip.dataset.pc);
+      selectedNotes.delete(pc);
+      document.querySelectorAll(`[data-pc="${pc}"]`).forEach(k => k.classList.remove('active'));
+      renderSelectedNotes();
+      detectAndRenderKeys();
+    });
+  });
+}
+
+function detectAndRenderKeys() {
+  if (selectedNotes.size === 0) {
+    document.getElementById('keyResults').innerHTML = `<div class="empty-state"><div class="empty-state-icon">🎹</div><p>Play some notes to find matching keys.<br>Lock first if you want to play freely without logging.</p></div>`;
+    document.getElementById('keyInfoPanel').innerHTML = '';
+    selectedKeyName = null;
+    return;
+  }
+  const scored = KEYS.map(k => {
+    let matches = 0;
+    selectedNotes.forEach(pc => { if (k.noteClasses.includes(pc)) matches++; });
+    const score    = matches / selectedNotes.size;
+    const coverage = matches / 7;
+    return { key: k, matches, score, coverage, combined: score * 0.7 + coverage * 0.3 };
+  }).sort((a, b) => b.combined - a.combined || a.key.root - b.key.root);
+
+  const topScore = scored[0].score;
+  const shown    = scored.filter(s => s.score >= Math.max(0.5, topScore * 0.7)).slice(0, 8);
+
+  const container = document.getElementById('keyResults');
+  container.innerHTML = `
+    <div class="section-label" style="margin-bottom:14px">POSSIBLE KEYS — click to explore</div>
+    <div class="key-matches">
+      ${shown.map(s => renderKeyMatchBtn(s)).join('')}
+    </div>`;
+
+  container.querySelectorAll('.key-match-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.key-match-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedKeyName = btn.dataset.keyname;
+      renderKeyInfoPanel(selectedKeyName);
+    });
+  });
+
+  const first = container.querySelector('.key-match-btn');
+  if (first) {
+    first.classList.add('selected');
+    selectedKeyName = first.dataset.keyname;
+    renderKeyInfoPanel(selectedKeyName);
+  }
+}
+
+function renderKeyMatchBtn(s) {
+  const k    = s.key;
+  const pct  = Math.round(s.score * 100);
+  const dots = Array.from({length:7}, (_, i) =>
+    `<div class="score-dot${i < s.matches ? ' lit' : ''}"></div>`
+  ).join('');
+  const noteCells = k.notes.map((n, i) => {
+    const pc    = k.noteClasses[i];
+    const isSel = selectedNotes.has(pc);
+    return `<span class="${isSel ? 'selected' : 'in-key'}">${n}</span>`;
+  }).join(' ');
+  return `<button class="key-match-btn" data-keyname="${k.name}">
+    <div class="key-match-name ${k.type}">${k.name}</div>
+    <div class="key-match-notes">${noteCells}</div>
+    <div class="key-match-score-wrap">
+      <div class="score-dots">${dots}</div>
+      <div class="key-match-score">${pct}%</div>
+    </div>
+  </button>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// KEY INFO PANEL  (chords, scale player, cadences, progressions)
+// ═══════════════════════════════════════════════════════
+
+function renderKeyInfoPanel(keyName) {
+  const keyData = KEYS.find(k => k.name === keyName);
+  if (!keyData) return;
+  stopScalePlay();
+
+  const DEGREE_NAMES = ['I','II','III','IV','V','VI','VII'];
+
+  const chordCards = keyData.chords.map((chord, i) => {
+    const roleClass = i === 0 ? 'tonic' : i === 4 ? 'dominant' : i === 3 ? 'subdominant' : '';
+    return `<div class="chord-card ${roleClass}">
+      <div class="chord-numeral">${keyData.romans[i]}</div>
+      <div class="chord-name">${chord}</div>
+    </div>`;
+  }).join('');
+
+  // Scale notes — clickable buttons with degree labels
+  const scaleNoteBtns = keyData.notes.map((noteName, i) => {
+    const pc       = keyData.noteClasses[i];
+    const isSel    = selectedNotes.has(pc);
+    return `<button class="scale-note-btn${isSel ? ' in-selection' : ''}"
+        data-scale-idx="${i}" data-pc="${pc}" title="Play ${noteName}">
+      <span class="scale-degree">${DEGREE_NAMES[i]}</span>
+      <span class="scale-note-name">${noteName}</span>
+    </button>`;
+  }).join('');
+
+  const cadenceItems = keyData.cadences.map(c => `
+    <div class="cadence-item">
+      <div class="cadence-chords">${c.chords.join(' → ')}</div>
+      <div>
+        <div style="font-size:10px;font-weight:600;color:var(--text-2);font-family:'IBM Plex Mono',monospace;letter-spacing:1px">${c.name}</div>
+        <div class="cadence-desc">${c.desc}</div>
+      </div>
+    </div>`).join('');
+
+  const progItems = keyData.progressions.map(p => `
+    <div class="prog-item">
+      <div class="prog-chords">${p.chords.join(' – ')}</div>
+      <div class="prog-name">${p.name}</div>
+      <div class="prog-desc">${p.desc}</div>
+    </div>`).join('');
+
+  document.getElementById('keyInfoPanel').innerHTML = `
+    <div class="key-info-panel">
+      <div class="key-info-header">
+        <div class="key-info-name" style="color:${keyData.type==='major'?'var(--kick)':'var(--snare)'}">${keyData.name}</div>
+        ${keyData.relative ? `<div class="key-info-relative">relative: ${keyData.relative}</div>` : ''}
+      </div>
+
+      <!-- Scale player -->
+      <div class="scale-player">
+        <div class="scale-player-header">
+          <div class="detail-label" style="margin-bottom:0">Scale</div>
+          <button class="play-scale-btn" id="playScaleBtn">▶ PLAY SCALE</button>
+        </div>
+        <div class="scale-notes-row" id="scaleNotesRow">${scaleNoteBtns}</div>
+      </div>
+
+      <div class="key-grid">
+        <div class="key-subsection">
+          <div class="detail-label">Diatonic Chords</div>
+          <div class="chords-row">${chordCards}</div>
+        </div>
+        <div class="key-subsection">
+          <div class="detail-label">Cadences</div>
+          <div class="cadences-list">${cadenceItems}</div>
+        </div>
+      </div>
+      <div class="detail-label">Common Progressions</div>
+      <div class="progressions-list">${progItems}</div>
+    </div>`;
+
+  // Play scale button
+  document.getElementById('playScaleBtn').addEventListener('click', () => {
+    if (scalePlayTimer !== null) { stopScalePlay(); return; }
+    playScaleSequence(keyData);
+  });
+
+  // Individual scale note buttons
+  document.querySelectorAll('.scale-note-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx  = parseInt(btn.dataset.scaleIdx);
+      const pc   = parseInt(btn.dataset.pc);
+      // Play the note at the base octave of the current piano view
+      const midi = (pianoOctave + 1) * 12 + ((keyData.noteClasses[idx] - keyData.root + 12) % 12) + keyData.root;
+      playPianoNote(midi < 48 ? midi + 12 : midi > 84 ? midi - 12 : midi);
+      flashKey(midi);
+    });
+  });
+}
+
+function playScaleSequence(keyData) {
+  stopScalePlay();
+  const baseC  = (pianoOctave + 1) * 12; // C of current octave
+  const root   = keyData.root;
+  // Build 8-note ascending sequence (7 scale notes + octave)
+  const offsets = keyData.type === 'major'
+    ? [0,2,4,5,7,9,11,12]
+    : [0,2,3,5,7,8,10,12];
+  const midis  = offsets.map(o => {
+    let m = baseC + root + o;
+    if (m < 48) m += 12;
+    if (m > 84) m -= 12;
+    return m;
+  });
+
+  const btn    = document.getElementById('playScaleBtn');
+  if (btn) { btn.textContent = '■ STOP'; btn.classList.add('sp-playing'); }
+
+  let step = 0;
+  const interval = 380; // ms per note
+
+  function tick() {
+    // Clear previous highlight
+    document.querySelectorAll('.scale-note-btn.sp-active').forEach(el => el.classList.remove('sp-active'));
+    if (step >= midis.length) { stopScalePlay(); return; }
+
+    // Highlight current
+    const noteBtn = document.querySelector(`.scale-note-btn[data-scale-idx="${step % 7}"]`);
+    if (noteBtn) noteBtn.classList.add('sp-active');
+
+    playPianoNote(midis[step]);
+    flashKey(midis[step]);
+    step++;
+    scalePlayTimer = setTimeout(tick, interval);
+  }
+  tick();
+}
+
+function stopScalePlay() {
+  if (scalePlayTimer !== null) { clearTimeout(scalePlayTimer); scalePlayTimer = null; }
+  document.querySelectorAll('.scale-note-btn.sp-active').forEach(el => el.classList.remove('sp-active'));
+  const btn = document.getElementById('playScaleBtn');
+  if (btn) { btn.textContent = '▶ PLAY SCALE'; btn.classList.remove('sp-playing'); }
+}
+
+// ═══════════════════════════════════════════════════════
+// TAB NAVIGATION
+// ═══════════════════════════════════════════════════════
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+// TRANSPORT EVENT BINDING
+// ═══════════════════════════════════════════════════════
+
+document.getElementById('playBtn').addEventListener('click', () => {
+  if (isPlaying) stopPlayback();
+  else { stopPreview(); startPlayback(); }
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  clearSequencer();
+  document.getElementById('rhythmResults').innerHTML = `<div class="empty-state"><div class="empty-state-icon">🥁</div><p>Set kick and snare steps, then hit MATCH PATTERNS<br>to find matching genres from the database.</p></div>`;
+});
+
+document.getElementById('matchBtn').addEventListener('click', matchRhythms);
+
+document.getElementById('bpmSlider').addEventListener('input', e => {
+  bpm = parseInt(e.target.value);
+  document.getElementById('bpmDisplay').textContent = bpm;
+});
+
+document.getElementById('clearNotesBtn').addEventListener('click', () => {
+  stopScalePlay();
+  selectedNotes.clear();
+  document.querySelectorAll('[data-pc]').forEach(k => k.classList.remove('active'));
+  renderSelectedNotes();
+  document.getElementById('keyResults').innerHTML = `<div class="empty-state"><div class="empty-state-icon">🎹</div><p>Play some notes to find matching keys.<br>Lock first if you want to play freely without logging.</p></div>`;
+  document.getElementById('keyInfoPanel').innerHTML = '';
+});
+
+// ── Lock button ────────────────────────────────────────
+document.getElementById('lockBtn').addEventListener('click', () => {
+  keyLocked = !keyLocked;
+  const btn = document.getElementById('lockBtn');
+  btn.textContent = keyLocked ? '🔒 LOCKED' : '🔓 UNLOCK';
+  btn.classList.toggle('locked', keyLocked);
+});
+
+// ── Octave buttons ─────────────────────────────────────
+document.getElementById('octDownBtn').addEventListener('click', () => {
+  if (pianoOctave > 1) { pianoOctave--; buildPianoUI(); }
+});
+document.getElementById('octUpBtn').addEventListener('click', () => {
+  if (pianoOctave < 7) { pianoOctave++; buildPianoUI(); }
+});
+
+// ── Sound pills ────────────────────────────────────────
+document.querySelectorAll('.sound-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.sound-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    currentSound = pill.dataset.sound;
+  });
+});
+
+// ── QWERTY keyboard ────────────────────────────────────
+const pressedKeys = new Set();
+document.addEventListener('keydown', e => {
+  if (e.repeat) return;
+  // Only handle keyboard shortcuts when Key tab is active
+  const keyTabActive = document.getElementById('tab-key').classList.contains('active');
+
+  const k = e.key.toLowerCase();
+
+  // Octave and lock shortcuts work regardless of focus
+  if (k === 'z') { if (pianoOctave > 1) { pianoOctave--; buildPianoUI(); } return; }
+  if (k === 'x') { if (pianoOctave < 7) { pianoOctave++; buildPianoUI(); } return; }
+  if (k === 'l') {
+    keyLocked = !keyLocked;
+    const btn = document.getElementById('lockBtn');
+    if (btn) {
+      btn.textContent = keyLocked ? '🔒 LOCKED' : '🔓 UNLOCK';
+      btn.classList.toggle('locked', keyLocked);
+    }
+    return;
+  }
+
+  if (!keyTabActive) return;
+  // Don't hijack typing in inputs
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (!(k in QWERTY_ALL)) return;
+  if (pressedKeys.has(k)) return;
+  pressedKeys.add(k);
+
+  e.preventDefault();
+  const baseC = (pianoOctave + 1) * 12;
+  const midi  = baseC + QWERTY_ALL[k];
+  handlePianoKey(midi);
+});
+
+document.addEventListener('keyup', e => {
+  pressedKeys.delete(e.key.toLowerCase());
+});
+
+// ═══════════════════════════════════════════════════════
+// THEME TOGGLE
+// ═══════════════════════════════════════════════════════
+
+const themeBtn = document.getElementById('themeBtn');
+const htmlEl = document.documentElement;
+
+function applyTheme(theme) {
+  if (theme === 'light') {
+    htmlEl.setAttribute('data-theme', 'light');
+    themeBtn.textContent = '🌙';
+    themeBtn.title = 'Switch to dark mode';
+    document.querySelector('meta[name="theme-color"]').content = '#eaf2ea';
+  } else {
+    htmlEl.removeAttribute('data-theme');
+    themeBtn.textContent = '☀️';
+    themeBtn.title = 'Switch to light mode';
+    document.querySelector('meta[name="theme-color"]').content = '#0c0c0e';
+  }
+  try { localStorage.setItem('rk-theme', theme); } catch(e) {}
+}
+
+themeBtn.addEventListener('click', () => {
+  const current = htmlEl.getAttribute('data-theme');
+  applyTheme(current === 'light' ? 'dark' : 'light');
+});
+
+// Restore saved preference, or respect system preference
+(function initTheme() {
+  let saved;
+  try { saved = localStorage.getItem('rk-theme'); } catch(e) {}
+  if (saved) {
+    applyTheme(saved);
+  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+    applyTheme('light');
+  } else {
+    applyTheme('dark');
+  }
+})();
+
+// ═══════════════════════════════════════════════════════
+// PWA INSTALL
+// ═══════════════════════════════════════════════════════
+
+let deferredPrompt;
+const installBtn = document.getElementById('installBtn');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBtn.classList.add('visible');
+});
+
+installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') installBtn.classList.remove('visible');
+  deferredPrompt = null;
+});
+
+// Service worker registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+
+buildSequencerUI();
+buildPianoUI();
+</script>
+</body>
+</html>
